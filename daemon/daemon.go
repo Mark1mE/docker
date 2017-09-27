@@ -877,19 +877,20 @@ func (daemon *Daemon) ShutdownTimeout() int {
 	// By default we use daemon's ShutdownTimeout.
 	shutdownTimeout := daemon.configStore.ShutdownTimeout
 
+	if daemon.containers == nil {
+		return shutdownTimeout
+	}
+
 	graceTimeout := 5
-	if daemon.containers != nil {
-		for _, c := range daemon.containers.List() {
-			if shutdownTimeout >= 0 {
-				stopTimeout := c.StopTimeout()
-				if stopTimeout < 0 {
-					shutdownTimeout = -1
-				} else {
-					if stopTimeout+graceTimeout > shutdownTimeout {
-						shutdownTimeout = stopTimeout + graceTimeout
-					}
-				}
-			}
+	for _, c := range daemon.containers.List() {
+		if shutdownTimeout < 0 {
+			continue
+		}
+		stopTimeout := c.StopTimeout()
+		if stopTimeout < 0 {
+			shutdownTimeout = -1
+		} else if stopTimeout+graceTimeout > shutdownTimeout {
+			shutdownTimeout = stopTimeout + graceTimeout
 		}
 	}
 	return shutdownTimeout
